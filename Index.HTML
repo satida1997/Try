@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Franck & Sa Family - Web App รายรับ–รายจ่าย</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; background: #fff0f5; min-height:100vh; display:flex; flex-direction:column;}
+    .hidden { display: none; }
+    .cute-btn { padding: 12px 24px; border-radius: 999px; font-weight:bold; transition:0.2s; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+    .cute-btn:hover { transform: scale(1.08); }
+    .vocab-item { cursor:pointer; transition:0.2s; padding:6px; border-radius:8px; background:#fff9c4;}
+    .vocab-item:hover { background-color:#ffecb3; transform:scale(1.05);}
+    header { text-align:center; padding:1rem; background:#ffb6c1; color:white; font-size:1.8rem; font-weight:bold; box-shadow:0 4px 8px rgba(0,0,0,0.1);}
+    .record-item { display:flex; justify-content:space-between; align-items:center; padding:6px; border-radius:6px; margin-bottom:4px; background:#fef3c7;}
+    .delete-btn { background:#f87171; color:white; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer; transition:0.2s;}
+    .delete-btn:hover { background:#ef4444; }
+  </style>
+</head>
+<body class="flex flex-col">
+
+  <!-- Header -->
+  <header>💖 Franck & Sa Family 💖</header>
+
+  <!-- Navbar -->
+  <nav class="bg-pink-400 text-white p-4 flex justify-around font-bold shadow-md">
+    <button onclick="showPage('page1')" class="hover:underline">➕ บันทึกรายการ</button>
+    <button onclick="showPage('page2')" class="hover:underline">📊 สถิติ</button>
+  </nav>
+
+  <!-- Page 1: บันทึก -->
+  <div id="page1" class="flex-1 p-6">
+    <h1 class="text-3xl font-bold text-center mb-6 text-pink-600">บันทึกรายรับ–รายจ่าย</h1>
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-6 space-y-4">
+      <input id="description" type="text" placeholder="ชื่อรายการ (Description)" class="w-full p-3 border rounded-lg">
+      <input id="amount" type="number" placeholder="จำนวนเงิน (Amount)" class="w-full p-3 border rounded-lg">
+
+      <div class="flex justify-center gap-4 my-2">
+        <button onclick="setCategory('รายรับ')" id="btnIncome" class="cute-btn bg-green-300 text-green-800">🌸 รายรับ</button>
+        <button onclick="setCategory('รายจ่าย')" id="btnExpense" class="cute-btn bg-red-300 text-red-800">🍀 รายจ่าย</button>
+      </div>
+
+      <input id="date" type="date" class="w-full p-3 border rounded-lg">
+      <button onclick="addRecord()" class="w-full bg-pink-500 text-white py-3 rounded-xl font-bold hover:bg-pink-600 transition">บันทึก</button>
+    </div>
+  </div>
+
+  <!-- Page 2: สถิติ -->
+  <div id="page2" class="flex-1 p-6 hidden">
+    <h1 class="text-3xl font-bold text-center mb-6 text-pink-600">สถิติรายรับ–รายจ่าย</h1>
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <h2 class="font-bold text-lg mb-4">รายการย้อนหลัง</h2>
+      <div id="recordList" class="space-y-2 text-sm"></div>
+    </div>
+  </div>
+
+  <!-- Vocabulary Section -->
+  <footer class="bg-yellow-100 mt-auto p-6">
+    <h2 class="text-lg font-bold text-center mb-4 text-yellow-700">📝 English Vocabulary (20 words)</h2>
+    <div class="flex justify-center gap-4 mb-2">
+      <label class="font-semibold">Voice:</label>
+      <select id="voiceSelect" class="p-1 border rounded"></select>
+    </div>
+    <div id="vocabList" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-sm font-semibold text-gray-700"></div>
+  </footer>
+
+  <script>
+    let records = JSON.parse(localStorage.getItem("records")) || [];
+    let selectedCategory = "รายรับ";
+    const vocab = ["income","expense","budget","save","spend","earn","cost","price","balance","wallet","money","salary","payment","profit","loss","market","shopping","bill","debt","credit"];
+    let voices=[], usVoices=[], selectedVoice=null;
+
+    function showPage(pageId){
+      document.getElementById("page1").classList.add("hidden");
+      document.getElementById("page2").classList.add("hidden");
+      document.getElementById(pageId).classList.remove("hidden");
+      if(pageId==="page2") renderStats();
+    }
+
+    function setCategory(cat){
+      selectedCategory=cat;
+      document.getElementById("btnIncome").classList.remove("ring-4","ring-green-500");
+      document.getElementById("btnExpense").classList.remove("ring-4","ring-red-500");
+      if(cat==="รายรับ") document.getElementById("btnIncome").classList.add("ring-4","ring-green-500");
+      else document.getElementById("btnExpense").classList.add("ring-4","ring-red-500");
+    }
+
+    function addRecord(){
+      const description=document.getElementById("description").value.trim();
+      const amount=Number(document.getElementById("amount").value);
+      const date=document.getElementById("date").value;
+      if(!description||!amount||!date){ alert("กรุณากรอกข้อมูลให้ครบ"); return;}
+      records.push({description, amount, category:selectedCategory, date});
+      localStorage.setItem("records",JSON.stringify(records));
+      document.getElementById("description").value="";
+      document.getElementById("amount").value="";
+      document.getElementById("date").value="";
+      alert("บันทึกสำเร็จ!");
+    }
+
+    function deleteRecord(index){
+      if(confirm("คุณต้องการลบรายการนี้หรือไม่?")){
+        records.splice(index,1);
+        localStorage.setItem("records",JSON.stringify(records));
+        renderStats();
+      }
+    }
+
+    function renderStats(){
+      let income=0, expense=0;
+      const recordList=document.getElementById("recordList");
+      recordList.innerHTML="";
+      records.forEach((r,i)=>{
+        const div=document.createElement("div");
+        div.className="record-item";
+
+        const span=document.createElement("span");
+        span.innerText=`${r.date} - ${r.description} (${r.category}): ฿${r.amount}`;
+        span.onclick=()=>speak(r.description,span);
+
+        const btn=document.createElement("button");
+        btn.innerText="ลบ";
+        btn.className="delete-btn";
+        btn.onclick=()=>deleteRecord(i);
+
+        div.appendChild(span);
+        div.appendChild(btn);
+        recordList.appendChild(div);
+
+        if(r.category==="รายรับ") income+=r.amount;
+        else expense+=r.amount;
+      });
+      renderChart(income, expense);
+    }
+
+    let chart;
+    function renderChart(income,expense){
+      const ctx=document.getElementById("chart").getContext("2d");
+      if(chart) chart.destroy();
+      chart=new Chart(ctx,{
+        type:"bar",
+        data:{ labels:["รายรับ (Income)","รายจ่าย (Expense)"], datasets:[{label:"จำนวนเงิน (บาท)", data:[income,expense], backgroundColor:["#4CAF50","#F44336"]}] },
+        options:{plugins:{legend:{display:false}}}
+      });
+    }
+
+    function loadVoices(){
+      voices=speechSynthesis.getVoices();
+      usVoices=voices.filter(v=>v.lang.includes('en-US'));
+      const voiceSelect=document.getElementById("voiceSelect");
+      voiceSelect.innerHTML="";
+      usVoices.forEach((v,i)=>{
+        const opt=document.createElement("option");
+        opt.value=i; opt.innerText=`${v.name} (${v.lang})`;
+        voiceSelect.appendChild(opt);
+      });
+      selectedVoice=usVoices[0]||null;
+    }
+    document.getElementById("voiceSelect").onchange=function(){ selectedVoice=usVoices[this.value]; }
+
+    function speak(word,el){
+      const utter=new SpeechSynthesisUtterance(word);
+      utter.lang="en-US"; utter.rate=0.95; utter.pitch=1.2;
+      if(selectedVoice) utter.voice=selectedVoice;
+      if(el) el.style.backgroundColor="#f59e0b";
+      utter.onend=()=>{ if(el) el.style.backgroundColor="#fff9c4"; }
+      speechSynthesis.speak(utter);
+    }
+
+    function renderVocab(){
+      const vocabList=document.getElementById("vocabList");
+      vocabList.innerHTML="";
+      vocab.forEach(word=>{
+        const div=document.createElement("div");
+        div.className="vocab-item shadow";
+        div.style.background="#ffecb3";
+        div.innerText=word;
+        div.onclick=()=>speak(word,div);
+        vocabList.appendChild(div);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded",()=>{
+      renderVocab();
+      if(speechSynthesis.getVoices().length!==0) loadVoices();
+      speechSynthesis.onvoiceschanged=loadVoices;
+      showPage("page1");
+      const today=new Date();
+      document.getElementById('date').value=today.toISOString().substr(0,10);
+    });
+  </script>
+</body>
+</html>
